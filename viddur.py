@@ -2,21 +2,12 @@ import os
 import shutil
 import subprocess
 import datetime
+import argparse
 
 # --- USER CONFIGURATION ---
-# Please edit the three variables to configure the script.
-
-# 1. Full path to the main folder you want to scan.
-# Example: r"C:\Users\YourName\Videos"
-ROOT_FOLDER = r"D:\abc\Example folder"
-
-# 2. Folder names to exclude from the scan.
-# Example: {"Backups", "Archive"}
-EXCLUDED_FOLDERS = {"Example Name 1", "Example Name 2"}
-
-# 3. File extensions that you want to scan
+# File extensions that you want to scan
 # Example: {'.mp4', '.mkv', '.webm'}
-VIDEO_EXTENSIONS = {'.mp4', '.mkv', 'avi', '.mov', '.wmv', '.flv', '.webm'}
+VIDEO_EXTENSIONS = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm'}
 
 def get_video_duration(file_path: str) -> float:
     ffprobe_path = shutil.which('ffprobe')
@@ -43,16 +34,36 @@ def format_seconds_hms(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 def main():
-    print(f"Scanning folder: {ROOT_FOLDER}")
+    parser = argparse.ArgumentParser(
+        description="A script to calculate video durations across nested directories."
+    )
+    parser.add_argument(
+        "folder_path",
+        help="The full path to the main folder you want to scan."
+    )
+    parser.add_argument(
+        "-e", "--exclude",
+        nargs='+',
+        default=[],
+        help="A space-separated list of folder names to exclude from the scan (case-sensitive)."
+    )
+    args = parser.parse_args()
 
-    if not os.path.isdir(ROOT_FOLDER):
-        print("Error: The path specified in ROOT_FOLDER is not a valid directory.")
+    root_folder = args.folder_path
+    excluded_set = set(args.exclude)
+
+    print(f"Scanning folder: {root_folder}")
+    if excluded_set:
+        print(f"Excluding folders: {', '.join(excluded_set)}")
+
+    if not os.path.isdir(root_folder):
+        print(f"Error: The path '{root_folder}' is not a valid directory.")
         return
 
-    folder_durations = {}
+    folder_durations: Dict[str, Any] = {}
 
-    for dirpath, dirs, filenames in os.walk(ROOT_FOLDER):
-        dirs[:] = [d for d in dirs if d not in EXCLUDED_FOLDERS]
+    for dirpath, dirs, filenames in os.walk(root_folder):
+        dirs[:] = [d for d in dirs if d not in excluded_set]
 
         current_folder_seconds = 0.0
         video_count_in_folder = 0
@@ -98,9 +109,10 @@ def main():
     report_lines.append(f"  -> Total Duration: {format_seconds_hms(grand_total_seconds)}")
     report_lines.append("=" * 40)
 
-    folder_name = os.path.basename(os.path.normpath(ROOT_FOLDER))
+    folder_name = os.path.basename(os.path.normpath(root_folder))
     output_filename = f"{folder_name} - Video Duration.txt"
-    output_path = os.path.join(ROOT_FOLDER, output_filename)
+    output_path = os.path.join(root_folder, output_filename)
+    
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write("\n".join(report_lines))
