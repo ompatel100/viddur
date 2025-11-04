@@ -9,19 +9,21 @@ import argparse
 # Example: {'.mp4', '.mkv', '.webm'}
 VIDEO_EXTENSIONS = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm'}
 
-def get_video_duration(file_path: str) -> float:
-    ffprobe_path = shutil.which('ffprobe')
-    if not ffprobe_path:
-        print("Error: ffprobe not found. Please install FFmpeg and add it to your system's PATH.")
-        return -1
+FFPROBE_PATH = shutil.which('ffprobe')
 
-    command = [
-        ffprobe_path, "-v", "error", "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1", file_path
-    ]
+def get_video_duration(file_path: str) -> float:
     try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        return float(result.stdout)
+        if FFPROBE_PATH:
+            command = [
+                FFPROBE_PATH, "-v", "error", "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1", file_path
+            ]
+            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            return float(result.stdout)
+        else:
+            from moviepy import VideoFileClip 
+            with VideoFileClip(file_path) as clip:
+                return clip.duration if clip.duration else 0.0
     except Exception as e:
         print(f"Warning: Could not process file '{os.path.basename(file_path)}'. Error: {e}")
         return 0.0
@@ -59,6 +61,12 @@ def main():
     if not os.path.isdir(root_folder):
         print(f"Error: The path '{root_folder}' is not a valid directory.")
         return
+    
+    if FFPROBE_PATH:
+        print("Using ffprobe for scanning.")
+    else:
+        print("ffprobe not found in system PATH. Using moviepy (slower).")
+        print("For faster performance, install FFmpeg and add it to your system's PATH.")
 
     folder_durations: Dict[str, Any] = {}
 
@@ -73,9 +81,6 @@ def main():
                 video_count_in_folder += 1
                 full_path = os.path.join(dirpath, filename)
                 duration = get_video_duration(full_path)
-                
-                if duration < 0:
-                    return
                 
                 current_folder_seconds += duration
         
