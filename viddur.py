@@ -99,7 +99,7 @@ def generate_summary_report(data: Dict[str, Any]) -> List[str]:
             folder_name = os.path.basename(os.path.normpath(folder_path))
 
         lines.append(f"Folder: {folder_name}")
-        lines.append(f"  -> Videos: {info['video_count']} | Duration: {format_seconds_hms(info['total_seconds'])}")
+        lines.append(f"  -> Videos: {info['video_count']:>3} | Duration: {format_seconds_hms(info['total_seconds'])} | ")
         lines.append("-" * 40)
         
         grand_total_seconds += info['total_seconds']
@@ -130,7 +130,7 @@ def generate_detailed_report(data: Dict[str, Any]) -> List[str]:
             folder_name = os.path.basename(os.path.normpath(folder_path))
 
         lines.append(f"Folder: {folder_name}")
-        lines.append(f"  [Subtotal: {format_seconds_hms(info['total_seconds'])} | {info['video_count']} videos]")
+        lines.append(f"  [{info['video_count']:>3} videos | Subtotal: {format_seconds_hms(info['total_seconds'])} ]")
         
         sorted_files = sorted(info['files'], key=lambda x: x['name'])
         for file_info in sorted_files:
@@ -276,9 +276,17 @@ def main():
                 report_lines = generate_detailed_report(folder_durations)
             else:
                 report_lines = generate_summary_report(folder_durations)
+
+            timestamp = f"Generated on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            report_lines.append(timestamp)
+            report_content = "\n".join(report_lines)
             
             with open(output_path, 'w', encoding='utf-8') as f:
-                f.write("\n".join(report_lines))
+                f.write(report_content)
+                    
+            print("\n--- File Preview ---")
+            print(report_content)
+
             print(f"\nSuccess! Text file saved to:\n{output_path}")
 
     except Exception as e:
